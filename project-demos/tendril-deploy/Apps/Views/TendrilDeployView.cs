@@ -31,13 +31,23 @@ public class TendrilDeployFormModel
     [Display(Name = "Docker context", Order = 7)]
     public string DockerContext { get; set; } = ".";
 
-    [Display(Name = "PORT", Order = 8)]
+    [Display(Name = "Anthropic API key", Order = 8,
+        Prompt = "ANTHROPIC_API_KEY (Claude) — sent to Sliplane as a secret env var")]
+    [Required(ErrorMessage = "Enter your Anthropic API key")]
+    public string AnthropicApiKey { get; set; } = "";
+
+    [Display(Name = "GitHub token", Order = 9,
+        Prompt = "GITHUB_TOKEN for gh / PRs — sent to Sliplane as a secret env var")]
+    [Required(ErrorMessage = "Enter your GitHub token")]
+    public string GithubToken { get; set; } = "";
+
+    [Display(Name = "PORT", Order = 10)]
     public string Port { get; set; } = "8000";
 
-    [Display(Name = "TENDRIL_HOME", Order = 9)]
+    [Display(Name = "TENDRIL_HOME", Order = 11)]
     public string TendrilHome { get; set; } = "/data/tendril";
 
-    [Display(Name = "Volume ID (optional)", Order = 10,
+    [Display(Name = "Volume ID (optional)", Order = 12,
         Prompt = "Sliplane persistent volume — mount at TENDRIL_HOME")]
     public string? VolumeId { get; set; }
 
@@ -69,23 +79,32 @@ public class TendrilDeployView : ViewBase
         var config = UseService<IConfiguration>();
         var dockerfileResolver = UseService<GitHubDockerfilePathResolver>();
 
-        var model = UseState(() => new TendrilDeployFormModel
+        var model = UseState(() =>
         {
-            ServerId = _defaultServerId,
-            ProjectId = _defaultProjectId,
-            GitRepo = _draft.RepoUrl,
-            Branch = string.IsNullOrWhiteSpace(_draft.Branch) ? TendrilDeployDefaults.DefaultBranch : _draft.Branch,
-            DockerContext = string.IsNullOrWhiteSpace(_draft.DockerContext) ? "." : _draft.DockerContext,
-            DockerfilePath = string.IsNullOrWhiteSpace(_draft.DockerfilePath)
-                ? TendrilDeploymentPaths.DefaultDockerfilePath
-                : _draft.DockerfilePath,
-            Name = DeriveServiceName(_draft.RepoUrl, _draft.DockerContext),
-            Port = "8000",
-            TendrilHome = "/data/tendril",
-            AutoDeploy = true,
-            NetworkPublic = true,
-            NetworkProtocol = "http",
-            Healthcheck = "/",
+            var ui = TendrilDeploySettingsReader.Read(
+                config,
+                _draft,
+                TendrilDeployDefaults.DefaultBranch,
+                TendrilDeploymentPaths.DefaultDockerfilePath);
+            return new TendrilDeployFormModel
+            {
+                ServerId = _defaultServerId,
+                ProjectId = _defaultProjectId,
+                GitRepo = ui.GitRepo,
+                Branch = ui.Branch,
+                DockerContext = ui.DockerContext,
+                DockerfilePath = ui.DockerfilePath,
+                Name = DeriveServiceName(ui.GitRepo, ui.DockerContext),
+                Port = ui.Port,
+                TendrilHome = ui.TendrilHome,
+                VolumeId = ui.VolumeId,
+                AnthropicApiKey = config["TendrilDeploy:AnthropicApiKey"]?.Trim() ?? "",
+                GithubToken = config["TendrilDeploy:GithubToken"]?.Trim() ?? "",
+                AutoDeploy = true,
+                NetworkPublic = true,
+                NetworkProtocol = "http",
+                Healthcheck = "/",
+            };
         });
 
         var reloadCounter = UseState(0);
@@ -103,12 +122,15 @@ public class TendrilDeployView : ViewBase
             .Builder(m => m.Branch, s => s.ToTextInput())
             .Builder(m => m.DockerfilePath, s => s.ToTextInput().Placeholder(TendrilDeploymentPaths.DefaultDockerfilePath))
             .Builder(m => m.DockerContext, s => s.ToTextInput().Placeholder("."))
+            .Builder(m => m.AnthropicApiKey, b => b.ToPasswordInput(placeholder: "sk-ant-api03-…"))
+            .Builder(m => m.GithubToken, b => b.ToPasswordInput(placeholder: "ghp_… or fine-grained PAT"))
             .Builder(m => m.Port, b => b.ToTextInput())
             .Builder(m => m.TendrilHome, b => b.ToTextInput())
             .Builder(m => m.VolumeId, b => b.ToTextInput().Placeholder("optional"))
             .Remove(m => m.ProjectId, m => m.AutoDeploy, m => m.NetworkPublic, m => m.NetworkProtocol,
                 m => m.Healthcheck, m => m.Cmd)
-            .Required(m => m.ProjectId, m => m.Name, m => m.ServerId, m => m.GitRepo));
+            .Required(m => m.ProjectId, m => m.Name, m => m.ServerId, m => m.GitRepo, m => m.AnthropicApiKey,
+                m => m.GithubToken));
 
         QueryResult<Option<string>[]> QueryServers(IViewContext ctx, string q) =>
             ctx.UseQuery<Option<string>[], (string, string, int)>(
@@ -146,6 +168,16 @@ public class TendrilDeployView : ViewBase
 
             var m = model.Value;
 
+            var anthropic = (m.AnthropicApiKey ?? "").Trim();
+            var github = (m.GithubToken ?? "").Trim();
+            if (string.IsNullOrEmpty(anthropic) || string.IsNullOrEmpty(github))
+            {
+                deployError.Set(
+                    "Anthropic API key and GitHub token must be non-empty (spaces-only is treated as empty). "
+                    + "Sliplane rejects empty env values.");
+                return;
+            }
+
             isDeploying.Set(true);
             try
             {
@@ -164,6 +196,8 @@ public class TendrilDeployView : ViewBase
                 var port = string.IsNullOrWhiteSpace(m.Port) ? "8000" : m.Port.Trim();
                 var home = string.IsNullOrWhiteSpace(m.TendrilHome) ? "/data/tendril" : m.TendrilHome.Trim();
 
+                envVars.Add(new EnvironmentVariable("ANTHROPIC_API_KEY", anthropic, Secret: true));
+                envVars.Add(new EnvironmentVariable("GITHUB_TOKEN", github, Secret: true));
                 envVars.Add(new EnvironmentVariable("PORT", port, Secret: false));
                 envVars.Add(new EnvironmentVariable("TENDRIL_HOME", home, Secret: false));
 
@@ -203,12 +237,12 @@ public class TendrilDeployView : ViewBase
         var calloutNoDockerfile = new Callout(
             Text.Markdown(
                 "Default image: **[ArtemLazarchuk/Ivy-Tendril](https://github.com/ArtemLazarchuk/Ivy-Tendril)** branch `development`, Dockerfile **[`.github/docker/Dockerfile.tendril`](https://github.com/ArtemLazarchuk/Ivy-Tendril/tree/development/.github/docker)**. " +
-                "Add **ANTHROPIC_API_KEY** and **GITHUB_TOKEN** in the Sliplane service environment after deploy if you did not set them there."),
+                "**Secrets** below are sent to Sliplane as env vars on deploy. Optionally pre-fill Git/PORT/TENDRIL_HOME and keys from **dotnet user-secrets** (`TendrilDeploy:*` — see README)."),
             variant: CalloutVariant.Warning).Width(Size.Full());
 
         var headerSection = Layout.Vertical().AlignContent(Align.Center).Gap(4)
             | Text.H1("Deploy Tendril to Sliplane")
-            | Text.Lead("Pick server and Git settings, then deploy. Runtime secrets are configured in Sliplane, not in this form.");
+            | Text.Lead("Enter runtime secrets here so the container gets Claude and GitHub CLI working without interactive login.");
 
         var actionsRow = Layout.Vertical()
             | (Layout.Horizontal().AlignContent(Align.Center)

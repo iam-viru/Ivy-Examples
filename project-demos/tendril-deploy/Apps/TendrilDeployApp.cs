@@ -84,7 +84,7 @@ public class TendrilDeployApp : ViewBase
                 | (Layout.Vertical().AlignContent(Align.Center).Gap(6)
                     | Text.H2("Deploy Tendril to Sliplane")
                     | Text.Muted($"Default repository: {TendrilDeployDefaults.DefaultRepoUrl}")
-                    | Text.Muted("Sign in with Sliplane to deploy. You can change the Git URL after login; add API keys in Sliplane if needed."));
+                    | Text.Muted("Sign in with Sliplane to deploy. Git URL and API keys can be edited on the next screen."));
         }
 
         var serversReady = !firstServerQuery.Loading || firstServerQuery.Value != null;
