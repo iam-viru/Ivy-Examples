@@ -118,16 +118,11 @@ public class TendrilDeployView : ViewBase
             .Builder(m => m.ServerId,
                 s => s.ToAsyncSelectInput(QueryServers, LookupServer, placeholder: "Search server…"))
             .Builder(m => m.Name, s => s.ToTextInput().Placeholder("e.g. ivy-tendril"))
-            .Builder(m => m.GitRepo, s => s.ToTextInput().Placeholder("https://github.com/owner/repo"))
-            .Builder(m => m.Branch, s => s.ToTextInput())
-            .Builder(m => m.DockerfilePath, s => s.ToTextInput().Placeholder(TendrilDeploymentPaths.DefaultDockerfilePath))
-            .Builder(m => m.DockerContext, s => s.ToTextInput().Placeholder("."))
             .Builder(m => m.AnthropicApiKey, b => b.ToPasswordInput(placeholder: "sk-ant-api03-…"))
             .Builder(m => m.GithubToken, b => b.ToPasswordInput(placeholder: "ghp_… or fine-grained PAT"))
-            .Builder(m => m.Port, b => b.ToTextInput())
-            .Builder(m => m.TendrilHome, b => b.ToTextInput())
-            .Builder(m => m.VolumeId, b => b.ToTextInput().Placeholder("optional"))
-            .Remove(m => m.ProjectId, m => m.AutoDeploy, m => m.NetworkPublic, m => m.NetworkProtocol,
+            .Remove(m => m.ProjectId, m => m.GitRepo, m => m.Branch, m => m.DockerfilePath, m => m.DockerContext,
+                m => m.Port, m => m.TendrilHome, m => m.VolumeId,
+                m => m.AutoDeploy, m => m.NetworkPublic, m => m.NetworkProtocol,
                 m => m.Healthcheck, m => m.Cmd)
             .Required(m => m.ProjectId, m => m.Name, m => m.ServerId, m => m.GitRepo, m => m.AnthropicApiKey,
                 m => m.GithubToken));
@@ -236,13 +231,14 @@ public class TendrilDeployView : ViewBase
 
         var calloutNoDockerfile = new Callout(
             Text.Markdown(
-                "Default image: **[ArtemLazarchuk/Ivy-Tendril](https://github.com/ArtemLazarchuk/Ivy-Tendril)** branch `development`, Dockerfile **[`.github/docker/Dockerfile.tendril`](https://github.com/ArtemLazarchuk/Ivy-Tendril/tree/development/.github/docker)**. " +
-                "**Secrets** below are sent to Sliplane as env vars on deploy. Optionally pre-fill Git/PORT/TENDRIL_HOME and keys from **dotnet user-secrets** (`TendrilDeploy:*` — see README)."),
+                "**Git, Docker, PORT, TENDRIL_HOME, volume** come from **dotnet user-secrets** (`TendrilDeploy:*`) and app defaults — they are not shown in this form. " +
+                "Change them with `dotnet user-secrets set …` or use a `?repo=` GitHub URL (see README). " +
+                "Image: **[ArtemLazarchuk/Ivy-Tendril](https://github.com/ArtemLazarchuk/Ivy-Tendril)** → [`.github/docker/Dockerfile.tendril`](https://github.com/ArtemLazarchuk/Ivy-Tendril/tree/development/.github/docker)."),
             variant: CalloutVariant.Warning).Width(Size.Full());
 
         var headerSection = Layout.Vertical().AlignContent(Align.Center).Gap(4)
             | Text.H1("Deploy Tendril to Sliplane")
-            | Text.Lead("Enter runtime secrets here so the container gets Claude and GitHub CLI working without interactive login.");
+            | Text.Lead("Pick server, service name, and tokens. Build settings use user-secrets / defaults.");
 
         var actionsRow = Layout.Vertical()
             | (Layout.Horizontal().AlignContent(Align.Center)
