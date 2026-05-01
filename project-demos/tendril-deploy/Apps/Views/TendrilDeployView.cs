@@ -248,13 +248,6 @@ public class TendrilDeployView : ViewBase
             }
         }
 
-        var calloutNoDockerfile = new Callout(
-            Text.Markdown(
-                "**Git, Docker, PORT, TENDRIL_HOME, volume** come from **dotnet user-secrets** (`TendrilDeploy:*`) and app defaults — they are not shown in this form. " +
-                "Change them with `dotnet user-secrets set …` or use a `?repo=` GitHub URL (see README). " +
-                "Image: **[ArtemLazarchuk/Ivy-Tendril](https://github.com/ArtemLazarchuk/Ivy-Tendril)** → [`.github/docker/Dockerfile.tendril`](https://github.com/ArtemLazarchuk/Ivy-Tendril/tree/development/.github/docker)."),
-            variant: CalloutVariant.Warning).Width(Size.Full());
-
         var headerSection = Layout.Vertical().AlignContent(Align.Center).Gap(4)
             | Text.H1("Deploy Tendril to Sliplane")
             | Text.Lead(
@@ -273,7 +266,6 @@ public class TendrilDeployView : ViewBase
 
         var cardContent = Layout.Vertical()
             | headerSection
-            | calloutNoDockerfile
             | new Separator()
             | formView
             | new Spacer()
