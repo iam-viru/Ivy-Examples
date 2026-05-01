@@ -103,6 +103,11 @@ public class TendrilDeployView : ViewBase
 
         var reloadCounter = UseState(0);
         var stepIndex = UseState(0);
+        /// <summary>
+        /// Step 1 hides the main form controls; Ivy form validation relies on mounted inputs,
+        /// so we freeze the validated step-0 model and deploy from this snapshot.
+        /// </summary>
+        var validatedDeployForm = UseState<TendrilDeployFormModel?>(() => null);
         var deployedService = UseState<(string ProjectId, SliplaneService Service)?>(() => null);
         var deployError = UseState<string?>(() => null);
         var validationFailed = UseState(false);
@@ -148,9 +153,11 @@ public class TendrilDeployView : ViewBase
             if (!await onSubmit())
             {
                 validationFailed.Set(true);
+                validatedDeployForm.Set(null);
                 return;
             }
 
+            validatedDeployForm.Set(CloneFormModel(model.Value));
             stepIndex.Set(1);
         }
 
@@ -159,13 +166,14 @@ public class TendrilDeployView : ViewBase
             deployError.Set(null);
             deployedService.Set(null);
             validationFailed.Set(false);
-            if (!await onSubmit())
+            var m = validatedDeployForm.Value;
+            if (m == null)
             {
-                validationFailed.Set(true);
+                deployError.Set("Form state expired. Go Back, then continue from step 1 again.");
+                stepIndex.Set(0);
                 return;
             }
 
-            var m = model.Value;
 
             var anthropic = (anthropicKey.Value ?? "").Trim();
             var claudeOAuth = (claudeOAuthToken.Value ?? "").Trim();
@@ -299,7 +307,12 @@ public class TendrilDeployView : ViewBase
         ValueTask OnStepperSelect(Event<Stepper, int> e)
         {
             if (e.Value < stepIndex.Value)
+            {
                 stepIndex.Set(e.Value);
+                if (e.Value == 0)
+                    validatedDeployForm.Set(null);
+            }
+
             return ValueTask.CompletedTask;
         }
 
@@ -356,7 +369,11 @@ public class TendrilDeployView : ViewBase
                     .Large()
                     .BorderRadius(BorderRadius.Full)
                     .Width(Size.Fraction(0.31f))
-                    .OnClick(_ => stepIndex.Set(0))
+                    .OnClick(_ =>
+                    {
+                        stepIndex.Set(0);
+                        validatedDeployForm.Set(null);
+                    })
                 | new Spacer()
                 | new Button("Deploy")
                     .Icon(Icons.Rocket, Align.Right)
@@ -419,6 +436,25 @@ public class TendrilDeployView : ViewBase
                 | pageColumn,
             manageFloat);
     }
+
+    private static TendrilDeployFormModel CloneFormModel(TendrilDeployFormModel src) => new()
+    {
+        ServerId = src.ServerId,
+        ProjectId = src.ProjectId,
+        Name = src.Name,
+        GitRepo = src.GitRepo,
+        Branch = src.Branch,
+        DockerfilePath = src.DockerfilePath,
+        DockerContext = src.DockerContext,
+        Port = src.Port,
+        TendrilHome = src.TendrilHome,
+        VolumeId = src.VolumeId,
+        AutoDeploy = src.AutoDeploy,
+        NetworkPublic = src.NetworkPublic,
+        NetworkProtocol = src.NetworkProtocol,
+        Healthcheck = src.Healthcheck,
+        Cmd = src.Cmd,
+    };
 
     private static string? SecretPrefill(IConfiguration c, string key)
     {
