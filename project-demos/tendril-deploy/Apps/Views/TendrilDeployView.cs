@@ -31,26 +31,6 @@ public class TendrilDeployFormModel
     [Display(Name = "Docker context", Order = 7)]
     public string DockerContext { get; set; } = ".";
 
-    [Display(Name = "Anthropic API key (optional)", Order = 8,
-        Prompt = "ANTHROPIC_API_KEY from Claude Console — use this **or** “Claude subscription token” below (not both needed). If both are set, the API key takes precedence in Claude Code.")]
-    public string? AnthropicApiKey { get; set; }
-
-    [Display(Name = "Claude subscription token (optional)", Order = 9,
-        Prompt = "Run `claude setup-token` locally (Pro / Max / Team / Enterprise), then paste here — sent as CLAUDE_CODE_OAUTH_TOKEN for headless hosts with no browser login.")]
-    public string? ClaudeCodeOAuthToken { get; set; }
-
-    [Display(Name = "GitHub token (optional)", Order = 10,
-        Prompt = "GITHUB_TOKEN for gh / PRs — add in Sliplane later if you skip it here; empty values are not sent")]
-    public string? GithubToken { get; set; }
-
-    [Display(Name = "OpenAI API key (Codex CLI, optional)", Order = 11,
-        Prompt = "OPENAI_API_KEY — optional; enables OpenAI Codex without `codex login` in the container")]
-    public string? OpenAiApiKey { get; set; }
-
-    [Display(Name = "Gemini API key (Gemini CLI, optional)", Order = 12,
-        Prompt = "GEMINI_API_KEY — optional; headless auth for @google/gemini-cli (see Gemini CLI docs)")]
-    public string? GeminiApiKey { get; set; }
-
     [Display(Name = "PORT", Order = 13)]
     public string Port { get; set; } = "8000";
 
@@ -108,17 +88,18 @@ public class TendrilDeployView : ViewBase
                 Port = ui.Port,
                 TendrilHome = ui.TendrilHome,
                 VolumeId = ui.VolumeId,
-                AnthropicApiKey = config["TendrilDeploy:AnthropicApiKey"]?.Trim() ?? "",
-                ClaudeCodeOAuthToken = config["TendrilDeploy:ClaudeCodeOAuthToken"]?.Trim() ?? "",
-                GithubToken = config["TendrilDeploy:GithubToken"]?.Trim() ?? "",
-                OpenAiApiKey = config["TendrilDeploy:OpenAiApiKey"]?.Trim() ?? "",
-                GeminiApiKey = config["TendrilDeploy:GeminiApiKey"]?.Trim() ?? "",
                 AutoDeploy = true,
                 NetworkPublic = true,
                 NetworkProtocol = "http",
                 Healthcheck = "/",
             };
         });
+
+        var anthropicKey = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:AnthropicApiKey"));
+        var claudeOAuthToken = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:ClaudeCodeOAuthToken"));
+        var githubToken = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:GithubToken"));
+        var openAiKey = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:OpenAiApiKey"));
+        var geminiKey = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:GeminiApiKey"));
 
         var reloadCounter = UseState(0);
         var deployedService = UseState<(string ProjectId, SliplaneService Service)?>(() => null);
@@ -131,11 +112,6 @@ public class TendrilDeployView : ViewBase
             .Builder(m => m.ServerId,
                 s => s.ToAsyncSelectInput(QueryServers, LookupServer, placeholder: "Search server…"))
             .Builder(m => m.Name, s => s.ToTextInput().Placeholder("e.g. ivy-tendril"))
-            .Builder(m => m.AnthropicApiKey, b => b.ToPasswordInput(placeholder: "sk-ant-… or leave empty if using subscription token"))
-            .Builder(m => m.ClaudeCodeOAuthToken, b => b.ToPasswordInput(placeholder: "from `claude setup-token` (optional)"))
-            .Builder(m => m.GithubToken, b => b.ToPasswordInput(placeholder: "ghp_… or fine-grained PAT"))
-            .Builder(m => m.OpenAiApiKey, b => b.ToPasswordInput(placeholder: "sk-… (optional)"))
-            .Builder(m => m.GeminiApiKey, b => b.ToPasswordInput(placeholder: "optional — Gemini API key"))
             .Remove(m => m.ProjectId, m => m.GitRepo, m => m.Branch, m => m.DockerfilePath, m => m.DockerContext,
                 m => m.Port, m => m.TendrilHome, m => m.VolumeId,
                 m => m.AutoDeploy, m => m.NetworkPublic, m => m.NetworkProtocol,
@@ -178,9 +154,11 @@ public class TendrilDeployView : ViewBase
 
             var m = model.Value;
 
-            var anthropic = (m.AnthropicApiKey ?? "").Trim();
-            var claudeOAuth = (m.ClaudeCodeOAuthToken ?? "").Trim();
-            var github = (m.GithubToken ?? "").Trim();
+            var anthropic = (anthropicKey.Value ?? "").Trim();
+            var claudeOAuth = (claudeOAuthToken.Value ?? "").Trim();
+            var github = (githubToken.Value ?? "").Trim();
+            var openAi = (openAiKey.Value ?? "").Trim();
+            var gemini = (geminiKey.Value ?? "").Trim();
 
             isDeploying.Set(true);
             try
@@ -206,10 +184,8 @@ public class TendrilDeployView : ViewBase
                     envVars.Add(new EnvironmentVariable("CLAUDE_CODE_OAUTH_TOKEN", claudeOAuth, Secret: true));
                 if (github.Length > 0)
                     envVars.Add(new EnvironmentVariable("GITHUB_TOKEN", github, Secret: true));
-                var openAi = (m.OpenAiApiKey ?? "").Trim();
                 if (openAi.Length > 0)
                     envVars.Add(new EnvironmentVariable("OPENAI_API_KEY", openAi, Secret: true));
-                var gemini = (m.GeminiApiKey ?? "").Trim();
                 if (gemini.Length > 0)
                     envVars.Add(new EnvironmentVariable("GEMINI_API_KEY", gemini, Secret: true));
                 envVars.Add(new EnvironmentVariable("PORT", port, Secret: false));
@@ -248,11 +224,65 @@ public class TendrilDeployView : ViewBase
             }
         }
 
+        var claudeExpandable = new Expandable(
+            "Claude (Anthropic) — Claude Code",
+            Layout.Vertical().Gap(3).Width(Size.Full())
+                | Text.Muted("Claude Code inside the container.")
+                | Text.Markdown(
+                    "**API key:** create one in [Claude Console](https://console.anthropic.com/) → API keys. Pasted value is sent to Sliplane as **`ANTHROPIC_API_KEY`**.")
+                | Text.Markdown(
+                    "**Subscription token (no API billing):** on your laptop run **`claude setup-token`** (needs Pro / Max / Team / Enterprise), paste the token here → **`CLAUDE_CODE_OAUTH_TOKEN`**. If both key and token are set, Claude Code prefers the **API key**.")
+                | Text.Muted("Leave blank to configure later in the Sliplane service env.")
+                | anthropicKey.ToPasswordInput(placeholder: "sk-ant-api03-…").WithField().Label("Anthropic API key (optional)")
+                | claudeOAuthToken.ToPasswordInput(placeholder: "from claude setup-token").WithField().Label("Claude subscription token (optional)")
+        ).Open().Icon(Icons.Bot).Width(Size.Full());
+
+        var githubExpandable = new Expandable(
+            "GitHub — gh CLI",
+            Layout.Vertical().Gap(3).Width(Size.Full())
+                | Text.Muted("Repos, PRs, branches via GitHub CLI.")
+                | Text.Markdown(
+                    "**Where to get:** GitHub → **Settings → Developer settings** → Personal access tokens (classic or fine-grained). Scopes: at minimum **repo** if Tendril should push branches/open PRs.")
+                | Text.Markdown("**Sliplane env:** **`GITHUB_TOKEN`** (secret). The container runs `gh auth` using this variable.")
+                | Text.Muted("Optional — add later in Sliplane if you skip it here.")
+                | githubToken.ToPasswordInput(placeholder: "ghp_… or fine-grained PAT").WithField().Label("GitHub token (optional)")
+        ).Icon(Icons.Github).Width(Size.Full());
+
+        var openAiExpandable = new Expandable(
+            "OpenAI Codex CLI",
+            Layout.Vertical().Gap(3).Width(Size.Full())
+                | Text.Muted("@openai/codex in the container image.")
+                | Text.Markdown(
+                    "**Where to get:** [OpenAI Platform](https://platform.openai.com/api-keys) → API keys.")
+                | Text.Markdown(
+                    "**Sliplane env:** **`OPENAI_API_KEY`**. Avoids running interactive **`codex login`** in the container.")
+                | Text.Muted("Optional.")
+                | openAiKey.ToPasswordInput(placeholder: "sk-…").WithField().Label("OpenAI API key (optional)")
+        ).Icon(Icons.Code).Width(Size.Full());
+
+        var geminiExpandable = new Expandable(
+            "Google Gemini CLI",
+            Layout.Vertical().Gap(3).Width(Size.Full())
+                | Text.Muted("@google/gemini-cli in the container image.")
+                | Text.Markdown(
+                    "**Where to get:** Google AI Studio / Gemini API key (see [Gemini CLI docs](https://github.com/google-gemini/gemini-cli) for the exact variable names for your version).")
+                | Text.Markdown("**This form sends:** **`GEMINI_API_KEY`** when non-empty.")
+                | Text.Muted("Optional.")
+                | geminiKey.ToPasswordInput(placeholder: "Gemini API key").WithField().Label("Gemini API key (optional)")
+        ).Icon(Icons.Sparkles).Width(Size.Full());
+
+        var agentSections = Layout.Vertical().Gap(2).Width(Size.Full())
+            | Text.H4("Agents & credentials").Muted()
+            | claudeExpandable
+            | githubExpandable
+            | openAiExpandable
+            | geminiExpandable;
+
         var headerSection = Layout.Vertical().AlignContent(Align.Center).Gap(4)
             | Text.H1("Deploy Tendril to Sliplane")
             | Text.Lead(
-                "Pick server and service name. **All tokens are optional** — leave blank to set secrets later in Sliplane; only non-empty values are sent (Sliplane rejects empty env vars). "
-                + "Build settings use user-secrets / defaults.");
+                "Choose **server** and **service name**, then open each section below for **where to get** each secret and **which env var** it becomes. "
+                + "Empty fields are omitted (Sliplane rejects empty env values). Git / Dockerfile / volume defaults: user-secrets or `?repo=`.");
 
         var actionsRow = Layout.Vertical()
             | (Layout.Horizontal().AlignContent(Align.Center)
@@ -264,10 +294,12 @@ public class TendrilDeployView : ViewBase
                 ? new Callout(validationView, "Please fix the following", CalloutVariant.Error)
                 : validationView);
 
-        var cardContent = Layout.Vertical()
+        var cardContent = Layout.Vertical().Width(Size.Full())
             | headerSection
             | new Separator()
             | formView
+            | new Separator()
+            | agentSections
             | new Spacer()
             | actionsRow;
 
@@ -292,7 +324,7 @@ public class TendrilDeployView : ViewBase
         if (deployError.Value != null)
             cardContent = cardContent | new Callout(deployError.Value, variant: CalloutVariant.Error);
 
-        var card = new Card(cardContent).Width(Size.Fraction(0.42f));
+        var card = new Card(cardContent).Width(Size.Fraction(0.5f));
         var manageServicesUrl = config["Sliplane:ManageServicesUrl"]?.Trim();
         if (string.IsNullOrEmpty(manageServicesUrl))
             manageServicesUrl = "https://ivy-sliplane-management.sliplane.app/";
@@ -302,6 +334,12 @@ public class TendrilDeployView : ViewBase
         var manageFloat = new FloatingPanel(manageBtn, Align.BottomRight).Offset(new Thickness(0, 0, 20, 10));
 
         return new Fragment(Layout.Center() | card, manageFloat);
+    }
+
+    private static string? SecretPrefill(IConfiguration c, string key)
+    {
+        var v = c[key]?.Trim();
+        return string.IsNullOrEmpty(v) ? null : v;
     }
 
     private static string DeriveServiceName(string repoUrl, string dockerContext = ".")

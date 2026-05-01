@@ -9,11 +9,11 @@
     <UserSecretsId>tendril-deploy-sliplane-001</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Ivy" Version="1.2.37-pre-20260412104447" />
-    <PackageReference Include="Ivy.Analyser" Version="1.2.37-pre-20260412104447">
+    <PackageReference Include="Ivy" Version="1.2.50" />
+    <PackageReference Include="Ivy.Analyser" Version="1.2.50">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Ivy.Auth.Sliplane" Version="1.2.37-pre-20260412104447" />
+    <PackageReference Include="Ivy.Auth.Sliplane" Version="1.2.50" />
   </ItemGroup>
 </Project>
