@@ -113,7 +113,7 @@ public class TendrilDeployView : ViewBase
         var validationFailed = UseState(false);
         var isDeploying = UseState(false);
 
-        var (onSubmit, formView, validationView, loading) = UseForm(() => model.Value.ToForm("Deploy Tendril")
+        var (onSubmit, formView, validationView, loading) = UseForm(() => model.ToForm("Deploy Tendril")
             .Place(m => m.ServerId, m => m.Name)
             .Builder(m => m.ServerId,
                 s => s.ToAsyncSelectInput(QueryServers, LookupServer, placeholder: "Search server…"))
