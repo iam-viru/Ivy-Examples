@@ -112,6 +112,7 @@ public class TendrilDeployView : ViewBase
         var githubToken = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:GithubToken"));
         var openAiKey = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:OpenAiApiKey"));
         var geminiKey = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:GeminiApiKey"));
+        var copilotGhToken = UseState<string?>(() => SecretPrefill(config, "TendrilDeploy:CopilotGhToken"));
 
         var basicAuthModel = UseState(() => new TendrilBasicAuthFormModel());
         var basicAuthValidationFailed = UseState(false);
@@ -220,6 +221,7 @@ public class TendrilDeployView : ViewBase
             var github = (githubToken.Value ?? "").Trim();
             var openAi = (openAiKey.Value ?? "").Trim();
             var gemini = (geminiKey.Value ?? "").Trim();
+            var copilotGh = (copilotGhToken.Value ?? "").Trim();
 
             (string Users, string HashSecret, string JwtSecret) basicAuthEnv;
             try
@@ -264,6 +266,8 @@ public class TendrilDeployView : ViewBase
                     envVars.Add(new EnvironmentVariable("OPENAI_API_KEY", openAi, Secret: true));
                 if (gemini.Length > 0)
                     envVars.Add(new EnvironmentVariable("GEMINI_API_KEY", gemini, Secret: true));
+                if (copilotGh.Length > 0)
+                    envVars.Add(new EnvironmentVariable("GH_TOKEN", copilotGh, Secret: true));
                 envVars.Add(new EnvironmentVariable("BasicAuth__Users", basicAuthEnv.Users, Secret: true));
                 envVars.Add(new EnvironmentVariable("BasicAuth__HashSecret", basicAuthEnv.HashSecret,
                     Secret: true));
@@ -361,11 +365,25 @@ public class TendrilDeployView : ViewBase
                 | geminiKey.ToPasswordInput(placeholder: "Gemini API key").WithField().Label("Gemini API key (optional)")
         ).Icon(Icons.Sparkles).Width(Size.Full());
 
+        var copilotExpandable = new Expandable(
+            "GitHub Copilot CLI",
+            Layout.Vertical().Gap(3).Width(Size.Full())
+                | Text.Muted("Copilot in the terminal authenticates with GitHub (PAT), not a separate Copilot API key.")
+                | Text.Markdown(
+                    "**Where to get:** GitHub → **Settings → Developer settings** → Personal access tokens (classic or fine-grained). The account needs an active **GitHub Copilot** subscription (or org-assigned Copilot). Grant the scopes the [Copilot CLI docs](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli) require for your setup (often overlaps with **repo** / **read:user**). Copy the token and paste it below.")
+                | Text.Markdown(
+                    "**This form sends:** **`GH_TOKEN`** when non-empty. GitHub’s CLI stack treats **`GH_TOKEN`** like **`GITHUB_TOKEN`**; use the **GitHub — gh CLI** section above for **`GITHUB_TOKEN`**, or paste the **same PAT** here if you only want Copilot-oriented tooling to see **`GH_TOKEN`**.")
+                | Text.Muted("Optional.")
+                | copilotGhToken.ToPasswordInput(placeholder: "ghp_… or fine-grained PAT").WithField()
+                    .Label("GitHub token for Copilot CLI (optional)")
+        ).Icon(Icons.Terminal).Width(Size.Full());
+
         var agentSections = Layout.Vertical().Gap(2).Width(Size.Full())
             | claudeExpandable
             | githubExpandable
             | openAiExpandable
-            | geminiExpandable;
+            | geminiExpandable
+            | copilotExpandable;
 
         var basicAuthHintCallout = new Callout(
             Text.Markdown(
