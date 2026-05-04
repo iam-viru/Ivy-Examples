@@ -219,7 +219,7 @@ public static class TendrilCloneBootstrap
     private static string BuildShellStartupPrelude() =>
         """
 set -eu
-HOME="${HOMEDIR:-/root}"
+HOME="${HOMEDIR:-$(getent passwd "$(id -u)" | cut -d: -f6)}"
 home="${TENDRIL_HOME:-/data/tendril}"
 home="${home%/}"
 
