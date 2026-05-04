@@ -1,6 +1,7 @@
-namespace SliplaneDeploy.Services;
+namespace TendrilDeploy.Services;
 
-using SliplaneDeploy.Models;
+using TendrilDeploy;
+using TendrilDeploy.Models;
 
 internal static class ServiceRequestFactory
 {
@@ -17,12 +18,21 @@ internal static class ServiceRequestFactory
         string? cmd,
         string? healthcheck,
         IReadOnlyCollection<EnvironmentVariable>? env,
-        IReadOnlyCollection<(string VolumeId, string MountPath)>? volumeMounts,
-        IReadOnlyCollection<string>? ignorePaths = null)
+        IReadOnlyCollection<(string VolumeId, string MountPath)>? volumeMounts)
     {
-        var envList = env is { Count: > 0 } ? env.ToList() : null;
+        var envList = env is { Count: > 0 }
+            ? env
+                .Select(e => new EnvironmentVariable(
+                    Key: (e.Key ?? "").Trim(),
+                    Value: (e.Value ?? "").Trim(),
+                    Secret: e.Secret))
+                .Where(e => e.Key.Length > 0 && e.Value.Length > 0)
+                .ToList()
+            : null;
+        if (envList is { Count: 0 })
+            envList = null;
         var volumes = volumeMounts is { Count: > 0 }
-            ? volumeMounts.Select(v => new ServiceVolumeMount(v.MountPath, VolumeId: v.VolumeId)).ToList()
+            ? volumeMounts.Select(v => new ServiceVolumeMount(v.VolumeId, v.MountPath)).ToList()
             : null;
 
         return new CreateServiceRequest(
@@ -33,9 +43,10 @@ internal static class ServiceRequestFactory
                 Url: gitRepo.Trim(),
                 Branch: string.IsNullOrWhiteSpace(branch) ? "main" : branch.Trim(),
                 AutoDeploy: autoDeploy,
-                DockerfilePath: string.IsNullOrWhiteSpace(dockerfilePath) ? "Dockerfile" : dockerfilePath.Trim(),
-                DockerContext: string.IsNullOrWhiteSpace(dockerContext) ? "." : dockerContext.Trim(),
-                IgnorePaths: ignorePaths is { Count: > 0 } ? ignorePaths.ToList() : null
+                DockerfilePath: string.IsNullOrWhiteSpace(dockerfilePath)
+                    ? TendrilDeploymentPaths.DefaultDockerfilePath
+                    : dockerfilePath.Trim(),
+                DockerContext: string.IsNullOrWhiteSpace(dockerContext) ? "." : dockerContext.Trim()
             ),
             Cmd: string.IsNullOrWhiteSpace(cmd) ? null : cmd.Trim(),
             Healthcheck: string.IsNullOrWhiteSpace(healthcheck) ? null : healthcheck.Trim(),

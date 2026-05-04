@@ -1,6 +1,6 @@
 using Ivy.Auth.Sliplane;
-using SliplaneDeploy.Services;
-using SliplaneDeploy.Apps;
+using TendrilDeploy.Apps;
+using TendrilDeploy.Services;
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
 
@@ -9,22 +9,19 @@ var server = new Server();
 server.Services.AddHttpClient("Ivy", client =>
 {
     client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.DefaultRequestHeaders.Add("User-Agent", "Ivy-SliplaneDeploy/1.0");
+    client.DefaultRequestHeaders.Add("User-Agent", "Ivy-TendrilDeploy/1.0");
 });
 
 server.Services.AddHttpClient("GitHubRaw", client =>
 {
-    client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Ivy-SliplaneDeploy/1.0");
+    client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Ivy-TendrilDeploy/1.0");
 });
 
 server.Services.AddSingleton<GitHubDockerfilePathResolver>();
-server.Services.AddSingleton<IvyDeployManifestService>();
-
 server.Services.AddSingleton(server.Configuration);
 server.Services.AddHttpContextAccessor();
 server.Services.AddScoped<DeploymentDraftStore>();
 server.Services.AddScoped<SliplaneApiClient>();
-server.Services.AddScoped<IvyDeployOrchestrator>();
 
 Server.ConfigureAuthCookieOptions = options =>
 {
@@ -41,10 +38,8 @@ server.AddConnectionsFromAssembly();
 
 server.UseAuth<SliplaneAuthProvider>();
 
-// DefaultApp is required so that after OAuth redirect (which lands on /) Ivy knows
-// which app to open — without this the shell can't resolve the route and shows "app not found".
 var appShellSettings = new AppShellSettings()
-    .DefaultApp<SliplaneDeployApp>()
+    .DefaultApp<TendrilDeployApp>()
     .UseTabs(preventDuplicates: true);
 server.UseAppShell(appShellSettings);
 

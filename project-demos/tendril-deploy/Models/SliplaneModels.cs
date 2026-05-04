@@ -1,4 +1,4 @@
-namespace SliplaneDeploy.Models;
+namespace TendrilDeploy.Models;
 
 using System.Text.Json.Serialization;
 
@@ -69,30 +69,21 @@ public record SliplaneServiceDeployment(
 
 public record SliplaneServiceEvent(string Type, string Message, DateTime CreatedAt);
 
-/// <summary>
-/// POST /projects/{projectId}/services — matches the Sliplane API spec.
-/// <see cref="Deployment"/> is a <see cref="RepositoryDeployment"/> or <see cref="ImageDeployment"/>
-/// (API oneOf). System.Text.Json emits the runtime type when declared as <c>object</c>.
-/// </summary>
+/// <summary>POST /projects/{projectId}/services — matches the Sliplane API spec.</summary>
 public record CreateServiceRequest(
     string Name,
     string ServerId,
     ServiceNetworkRequest Network,
-    object Deployment,
+    RepositoryDeployment Deployment,
     string? Cmd = null,
     string? Healthcheck = null,
     List<EnvironmentVariable>? Env = null,
     List<ServiceVolumeMount>? Volumes = null
 );
 
-/// <summary>
-/// A volume mount. Either <see cref="VolumeId"/> (attach existing) or <see cref="VolumeName"/>
-/// (create a new volume with this name on the server) — oneOf per API spec.
-/// </summary>
 public record ServiceVolumeMount(
-    [property: JsonPropertyName("mountPath")] string MountPath,
-    [property: JsonPropertyName("id")] string? VolumeId = null,
-    [property: JsonPropertyName("name")] string? VolumeName = null
+    [property: JsonPropertyName("id")] string VolumeId,
+    [property: JsonPropertyName("mountPath")] string MountPath
 );
 
 public record ServiceNetworkRequest(bool Public = true, string Protocol = "http");
@@ -102,14 +93,7 @@ public record RepositoryDeployment(
     string Branch = "main",
     bool AutoDeploy = true,
     string DockerfilePath = "Dockerfile",
-    string DockerContext = ".",
-    [property: JsonPropertyName("ignorePaths")] List<string>? IgnorePaths = null
-);
-
-/// <summary>Container image deployment (e.g., <c>docker.io/library/postgres:16</c>).</summary>
-public record ImageDeployment(
-    string Url,
-    [property: JsonPropertyName("registryAuthenticationId")] string? RegistryAuthenticationId = null
+    string DockerContext = "."
 );
 
 public record EnvironmentVariable(string Key, string Value, bool Secret = false);

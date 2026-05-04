@@ -1,9 +1,13 @@
 name: Update Project Catalog
 
 on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+  workflow_dispatch:
   schedule:
     - cron: "0 2 * * *" # daily at 2 AM UTC
-  workflow_dispatch:
 
 jobs:
   update-catalog:
@@ -25,6 +29,7 @@ jobs:
           .github/scripts/generate-project-catalog.sh
 
       - name: Commit and push changes
+        if: github.event_name != 'pull_request'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
