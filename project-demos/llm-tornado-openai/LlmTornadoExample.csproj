@@ -16,8 +16,8 @@
 
   
     <ItemGroup>
-      <PackageReference Include="Ivy" Version="1.2.35" />
-    <PackageReference Include="Ivy.Analyser" Version="1.2.34">
+      <PackageReference Include="Ivy" Version="1.2.55" />
+    <PackageReference Include="Ivy.Analyser" Version="1.2.55">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -27,6 +27,8 @@
       <PackageReference Include="LlmTornado.Contrib" Version="1.1.10" />
       <PackageReference Include="LlmTornado.Mcp" Version="1.1.36" />
       <PackageReference Include="LlmTornado.Microsoft.Extensions.AI" Version="1.1.36" />
+      <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+      <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     </ItemGroup>
     
 

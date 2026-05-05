@@ -9,8 +9,9 @@
     <UserSecretsId>tendril-deploy-sliplane-001</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Ivy" Version="1.2.44" />
-    <PackageReference Include="Ivy.Analyser" Version="1.2.44">
+    <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
+    <PackageReference Include="Ivy" Version="1.2.55" />
+    <PackageReference Include="Ivy.Analyser" Version="1.2.55">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
