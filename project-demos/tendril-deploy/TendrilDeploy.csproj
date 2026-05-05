@@ -11,6 +11,8 @@
   <ItemGroup>
     <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
     <PackageReference Include="Ivy" Version="1.2.44" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.6.0" />
     <PackageReference Include="Ivy.Analyser" Version="1.2.44">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

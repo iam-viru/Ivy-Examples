@@ -1,4 +1,5 @@
 using Ivy.Auth.Sliplane;
+using TendrilDeploy.Api;
 using TendrilDeploy.Apps;
 using TendrilDeploy.Services;
 
@@ -29,6 +30,20 @@ Server.ConfigureAuthCookieOptions = options =>
 };
 
 server.Services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter, RepoCaptureFilter>();
+server.Services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter, TendrilApiStartupFilter>();
+server.Services.AddScoped<TendrilDeployService>();
+server.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((doc, _, _) =>
+    {
+        doc.Info.Title   = "Tendril Deploy API";
+        doc.Info.Version = "v1";
+        doc.Info.Description =
+            "Programmatic Tendril instance deployment on Sliplane. " +
+            "Authenticate via the X-Api-Key header (set TendrilDeploy:ApiKey in config).";
+        return Task.CompletedTask;
+    });
+});
 
 #if DEBUG
 server.UseHotReload();
