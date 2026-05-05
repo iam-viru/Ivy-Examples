@@ -353,6 +353,7 @@
       "githubLink": "https://github.com/Ivy-Interactive/Ivy-Examples/tree/main/project-demos/tendril-deploy",
       "deploymentLink": "ivy-projectdemos-tendril-deploy.sliplane.app",
       "tags": [
+        "Isopoh.Cryptography.Argon2",
         "Ivy.Analyser",
         "Ivy.Auth.Sliplane",
         "demo"
