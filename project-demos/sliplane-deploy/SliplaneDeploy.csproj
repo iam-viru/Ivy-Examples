@@ -13,8 +13,8 @@
     <Compile Remove="tools/**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Ivy" Version="1.2.44" />
-    <PackageReference Include="Ivy.Analyser" Version="1.2.44">
+    <PackageReference Include="Ivy" Version="1.2.55" />
+    <PackageReference Include="Ivy.Analyser" Version="1.2.55">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
