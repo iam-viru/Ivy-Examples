@@ -36,7 +36,11 @@ public sealed class TendrilApiStartupFilter : IStartupFilter
                 branch =>
                 {
                     branch.UseRouting();
-                    branch.UseEndpoints(ep => ep.MapScalarApiReference("/swagger/v1"));
+                    branch.UseEndpoints(ep => ep.MapScalarApiReference("/swagger/v1", options =>
+                    {
+                        // Keep examples in shell/curl instead of Python.
+                        options.WithDefaultHttpClient(ScalarTarget.Shell, ScalarClient.Curl);
+                    }));
                 });
 
             next(app);
