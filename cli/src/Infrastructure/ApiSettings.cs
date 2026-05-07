@@ -64,3 +64,31 @@ public class TendrilApiSettings : CommandSettings
     }
 }
 
+/// <summary>
+/// Base settings for all NuGet stats commands.
+/// URL defaults to https://ivy-nuget-stats.sliplane.app; optional API key.
+/// </summary>
+public class NuGetStatsSettings : CommandSettings
+{
+    [CommandOption("--nuget-stats-url <URL>")]
+    [Description("Base URL of the IvyInsights NuGet stats instance (or set NUGET_STATS_BASE_URL env var)")]
+    public string? NuGetStatsUrl { get; init; }
+
+    [CommandOption("--nuget-stats-key <KEY>")]
+    [Description("API key for IvyInsights (or set NUGET_STATS_API_KEY env var). Optional.")]
+    public string? NuGetStatsKey { get; init; }
+
+    public NuGetStatsClient CreateNuGetStatsClient()
+    {
+        var url = NuGetStatsUrl
+            ?? Environment.GetEnvironmentVariable("NUGET_STATS_BASE_URL")
+            ?? ConfigStore.Get("nuget_stats_base_url")
+            ?? "https://ivy-nuget-stats.sliplane.app";
+
+        var key = NuGetStatsKey
+            ?? Environment.GetEnvironmentVariable("NUGET_STATS_API_KEY")
+            ?? ConfigStore.Get("nuget_stats_api_key");
+
+        return new NuGetStatsClient(url, key);
+    }
+}

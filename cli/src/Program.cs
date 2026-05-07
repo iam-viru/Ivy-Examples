@@ -1,5 +1,5 @@
 using Ivy.Cli.Commands.Config;
-
+using Ivy.Cli.Commands.NuGet;
 using Ivy.Cli.Commands.Sliplane;
 using Ivy.Cli.Commands.Sliplane.Credentials;
 using Ivy.Cli.Commands.Sliplane.OAuth;
@@ -147,6 +147,24 @@ app.Configure(config =>
             branch.AddCommand<ListOAuthClientUsersCommand>("users")
                 .WithDescription("List OAuth client users");
         });
+    });
+
+    // ── NuGet stats (IvyInsights) ─────────────────────────────────────
+    config.AddBranch("nuget", nuget =>
+    {
+        nuget.SetDescription("NuGet package statistics (IvyInsights)");
+        nuget.AddCommand<NuGetSummaryCommand>("summary")
+            .WithDescription("Overall stats summary");
+        nuget.AddCommand<NuGetStarsCommand>("stars")
+            .WithDescription("Star counts per package");
+        nuget.AddCommand<NuGetStarredCommand>("starred")
+            .WithDescription("List starred packages");
+        nuget.AddCommand<NuGetUnstarredCommand>("unstarred")
+            .WithDescription("List unstarred packages");
+        nuget.AddCommand<NuGetDownloadsCommand>("downloads")
+            .WithDescription("Download counts per package");
+        nuget.AddCommand<NuGetDownloadsHistoryCommand>("downloads-history")
+            .WithDescription("Download history over time");
     });
 
     // ── Tendril ───────────────────────────────────────────────────────
