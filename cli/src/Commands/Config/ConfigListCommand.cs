@@ -4,7 +4,7 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Config;
 
-/// <summary>ivy config list — show all stored config keys (values masked for secrets).</summary>
+/// <summary>ivy-examples config list — show all stored config keys (values masked for secrets).</summary>
 public sealed class ConfigListCommand : Command<ConfigListCommand.Settings>
 {
     public sealed class Settings : CommandSettings { }
@@ -44,7 +44,7 @@ public sealed class ConfigListCommand : Command<ConfigListCommand.Settings>
         if (!anySet)
         {
             AnsiConsole.MarkupLine("[dim]No values saved yet in ~/.ivy/config.json[/]");
-            AnsiConsole.MarkupLine("Run any command and answer [green]y[/] when asked to save, or use [dim]ivy config set <key> <value>[/].");
+            AnsiConsole.MarkupLine($"Run any command and answer [green]y[/] when asked to save, or use [dim]{CliBrand.ToolCommandName} config set <key> <value>[/].");
             return 0;
         }
 

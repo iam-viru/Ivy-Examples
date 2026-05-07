@@ -4,7 +4,7 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Tendrils;
 
-/// <summary>ivy tendril projects — list Sliplane projects available for Tendril deployment.</summary>
+/// <summary>ivy-examples tendril projects — list Sliplane projects available for Tendril deployment.</summary>
 public sealed class ListTendrilProjectsCommand : AsyncCommand<ListTendrilProjectsCommand.Settings>
 {
     public sealed class Settings : TendrilApiSettings

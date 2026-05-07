@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Config;
 
-/// <summary>ivy config unset sliplane_api_key — remove a single key from ~/.ivy/config.json.</summary>
+/// <summary>ivy-examples config unset sliplane_api_key — remove a single key from ~/.ivy/config.json.</summary>
 public sealed class ConfigUnsetCommand : Command<ConfigUnsetCommand.Settings>
 {
     public sealed class Settings : CommandSettings

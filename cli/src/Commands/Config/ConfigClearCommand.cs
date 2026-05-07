@@ -4,7 +4,7 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Config;
 
-/// <summary>ivy config clear — delete the entire ~/.ivy/config.json after confirmation.</summary>
+/// <summary>ivy-examples config clear — delete the entire ~/.ivy/config.json after confirmation.</summary>
 public sealed class ConfigClearCommand : Command<ConfigClearCommand.Settings>
 {
     public sealed class Settings : CommandSettings { }

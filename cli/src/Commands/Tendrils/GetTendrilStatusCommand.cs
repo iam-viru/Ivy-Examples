@@ -7,7 +7,7 @@ using Spectre.Console.Cli;
 namespace Ivy.Cli.Commands.Tendrils;
 
 /// <summary>
-/// ivy tendril status — interactively pick a Tendril service and show its status.
+/// ivy-examples tendril status — interactively pick a Tendril service and show its status.
 /// If --project-id and --service-id are provided, skips the interactive prompt.
 /// </summary>
 public sealed class GetTendrilStatusCommand : AsyncCommand<GetTendrilStatusCommand.Settings>

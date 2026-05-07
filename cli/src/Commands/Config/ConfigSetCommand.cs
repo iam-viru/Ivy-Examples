@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Config;
 
-/// <summary>ivy config set sliplane_api_key sk-xxx — store a value in ~/.ivy/config.json.</summary>
+/// <summary>ivy-examples config set sliplane_api_key sk-xxx — store a value in ~/.ivy/config.json.</summary>
 public sealed class ConfigSetCommand : Command<ConfigSetCommand.Settings>
 {
     public sealed class Settings : CommandSettings

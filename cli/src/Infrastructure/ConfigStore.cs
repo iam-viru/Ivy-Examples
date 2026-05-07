@@ -87,7 +87,7 @@ public static class ConfigStore
         if (save)
         {
             Set(configKey, value);
-            AnsiConsole.MarkupLine($"[green]Saved.[/] You can also run [dim]ivy config set {configKey} <value>[/] anytime.");
+            AnsiConsole.MarkupLine($"[green]Saved.[/] You can also run [dim]{CliBrand.ToolCommandName} config set {configKey} <value>[/] anytime.");
         }
 
         return value;

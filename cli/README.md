@@ -1,12 +1,12 @@
 # Ivy CLI
 
-Unified command-line tool for Ivy Interactive infrastructure. Manage Sliplane servers, services, projects, and deploy Tendril instances — all from one `ivy` command.
+Unified command-line tool for Ivy Interactive infrastructure. Manage Sliplane servers, services, projects, and deploy Tendril instances — all from one `ivy-examples` command.
 
 ## Installation
 
 ```bash
 # From source (in cli/src/)
-dotnet tool install -g --add-source ./nupkg Ivy.Cli
+dotnet tool install -g --add-source ./nupkg Ivy.Cli   # global command: ivy-examples
 
 # Or run directly without installing
 dotnet run -- <command> [options]
@@ -32,47 +32,47 @@ export SLIPLANE_API_KEY=your-sliplane-token    # also needed for status/servers/
 
 ## Commands
 
-Commands are grouped by project: `ivy sliplane …` for Sliplane resources and `ivy tendril …` for Tendril deployments. CLI-wide settings live under `ivy config …`.
+Commands are grouped by project: `ivy-examples sliplane …` for Sliplane resources and `ivy-examples tendril …` for Tendril deployments. CLI-wide settings live under `ivy-examples config …`.
 
 ### Sliplane
 
 ```bash
-ivy sliplane me                                          # current identity
+ivy-examples sliplane me                                          # current identity
 
-ivy sliplane projects list
-ivy sliplane projects create --name my-project
-ivy sliplane projects delete --project-id abc123
+ivy-examples sliplane projects list
+ivy-examples sliplane projects create --name my-project
+ivy-examples sliplane projects delete --project-id abc123
 
-ivy sliplane servers list
-ivy sliplane servers get --server-id srv_123
-ivy sliplane servers create --name my-server --instance-type base --location fsn
-ivy sliplane servers metrics --server-id srv_123 --range 1h
+ivy-examples sliplane servers list
+ivy-examples sliplane servers get --server-id srv_123
+ivy-examples sliplane servers create --name my-server --instance-type base --location fsn
+ivy-examples sliplane servers metrics --server-id srv_123 --range 1h
 
-ivy sliplane services list                               # across all projects
-ivy sliplane services list --project-id proj_123
-ivy sliplane services get --project-id proj_123 --service-id svc_456
-ivy sliplane services create --project-id proj_123 --name my-app --server-id srv_123 --repo https://github.com/org/repo --public
-ivy sliplane services deploy --project-id proj_123 --service-id svc_456
-ivy sliplane services logs --project-id proj_123 --service-id svc_456
-ivy sliplane services pause --project-id proj_123 --service-id svc_456
-ivy sliplane services delete --project-id proj_123 --service-id svc_456
+ivy-examples sliplane services list                               # across all projects
+ivy-examples sliplane services list --project-id proj_123
+ivy-examples sliplane services get --project-id proj_123 --service-id svc_456
+ivy-examples sliplane services create --project-id proj_123 --name my-app --server-id srv_123 --repo https://github.com/org/repo --public
+ivy-examples sliplane services deploy --project-id proj_123 --service-id svc_456
+ivy-examples sliplane services logs --project-id proj_123 --service-id svc_456
+ivy-examples sliplane services pause --project-id proj_123 --service-id svc_456
+ivy-examples sliplane services delete --project-id proj_123 --service-id svc_456
 
-ivy sliplane credentials list
-ivy sliplane credentials create --name ghcr-creds --type ghcr --username myuser --token ghp_xxx
+ivy-examples sliplane credentials list
+ivy-examples sliplane credentials create --name ghcr-creds --type ghcr --username myuser --token ghp_xxx
 
-ivy sliplane oauth list
-ivy sliplane oauth get --client-id oauth_123
+ivy-examples sliplane oauth list
+ivy-examples sliplane oauth get --client-id oauth_123
 ```
 
 ### Tendril
 
 ```bash
 # List available Sliplane targets
-ivy tendril servers
-ivy tendril projects
+ivy-examples tendril servers
+ivy-examples tendril projects
 
 # Deploy a new Tendril instance
-ivy tendril deploy \
+ivy-examples tendril deploy \
   --project-id proj_123 \
   --server-id srv_456 \
   --name tendril-artem \
@@ -83,7 +83,7 @@ ivy tendril deploy \
   --repo https://github.com/Ivy-Interactive/Ivy-Examples
 
 # Check deployment status
-ivy tendril status \
+ivy-examples tendril status \
   --project-id proj_123 \
   --service-id svc_789
 ```
@@ -128,6 +128,6 @@ dotnet run -- --help
 ```bash
 cd cli/src
 dotnet pack -c Release -o ../nupkg
-dotnet tool install -g --add-source ../nupkg Ivy.Cli
-ivy --help
+dotnet tool install -g --add-source ../nupkg Ivy.Cli   # global command: ivy-examples
+ivy-examples --help
 ```
