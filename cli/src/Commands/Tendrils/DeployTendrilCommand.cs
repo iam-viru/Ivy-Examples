@@ -5,119 +5,168 @@ using Spectre.Console.Cli;
 
 namespace Ivy.Cli.Commands.Tendrils;
 
-/// <summary>
-/// ivy tendrils deploy — create and deploy a new Tendril instance on Sliplane.
-/// Calls POST /api/v1/tendrils on the tendril-deploy service.
-/// </summary>
 public sealed class DeployTendrilCommand : AsyncCommand<DeployTendrilCommand.Settings>
 {
     public sealed class Settings : TendrilApiSettings
     {
-        // ── Required Sliplane targeting ────────────────────────────────────
-
         [CommandOption("--sliplane-token <TOKEN>")]
-        [Description("Your Sliplane API token (or set SLIPLANE_API_KEY env var)")]
+        [Description("Sliplane API token (or set SLIPLANE_API_KEY env var)")]
         public string? SliplaneToken { get; init; }
-
-        [CommandOption("--project-id <ID>")]
-        [Description("Sliplane project ID where the Tendril service will be created")]
-        public required string ProjectId { get; init; }
-
-        [CommandOption("--server-id <ID>")]
-        [Description("Sliplane server ID where the service will run")]
-        public required string ServerId { get; init; }
-
-        [CommandOption("--name <NAME>")]
-        [Description("Name for the new Sliplane service, e.g. tendril-artem")]
-        public required string ServiceName { get; init; }
-
-        // ── Tendril login credentials ──────────────────────────────────────
-
-        [CommandOption("--username <USERNAME>")]
-        [Description("Username for logging into the deployed Tendril web UI")]
-        public required string BasicAuthUsername { get; init; }
-
-        [CommandOption("--password <PASSWORD>")]
-        [Description("Password for the Tendril web UI (minimum 8 characters)")]
-        public required string BasicAuthPassword { get; init; }
-
-        // ── Agent API keys (all optional) ──────────────────────────────────
-
-        [CommandOption("--anthropic-key <KEY>")]
-        [Description("Anthropic API key → ANTHROPIC_API_KEY in the container")]
-        public string? AnthropicApiKey { get; init; }
-
-        [CommandOption("--claude-token <TOKEN>")]
-        [Description("Claude OAuth token (claude setup-token) → CLAUDE_CODE_OAUTH_TOKEN")]
-        public string? ClaudeCodeOAuthToken { get; init; }
-
-        [CommandOption("--github-token <TOKEN>")]
-        [Description("GitHub personal access token → GITHUB_TOKEN")]
-        public string? GitHubToken { get; init; }
-
-        [CommandOption("--openai-key <KEY>")]
-        [Description("OpenAI API key → OPENAI_API_KEY")]
-        public string? OpenAiApiKey { get; init; }
-
-        [CommandOption("--gemini-key <KEY>")]
-        [Description("Google Gemini API key → GEMINI_API_KEY")]
-        public string? GeminiApiKey { get; init; }
-
-        // ── Workspace repos ────────────────────────────────────────────────
-
-        [CommandOption("--repo <URL>")]
-        [Description("GitHub repo to clone into the container on startup (repeatable)")]
-        public string[]? Repos { get; init; }
-
-        // ── Optional overrides ─────────────────────────────────────────────
-
-        [CommandOption("--volume-id <ID>")]
-        [Description("Sliplane persistent volume ID to attach (recommended to persist data)")]
-        public string? VolumeId { get; init; }
-
-        [CommandOption("--git-repo <URL>")]
-        [Description("Source repo for the Tendril Dockerfile (defaults to official Ivy-Tendril repo)")]
-        public string? GitRepo { get; init; }
-
-        [CommandOption("--branch <BRANCH>")]
-        [Description("Branch to build from (default: development)")]
-        public string? Branch { get; init; }
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        var client = settings.CreateTendrilClient();
+        var sliplaneToken = ConfigStore.Resolve(
+            flagValue: settings.SliplaneToken,
+            envVar:    Environment.GetEnvironmentVariable("SLIPLANE_API_KEY"),
+            configKey: "sliplane_api_key",
+            label:     "Sliplane API key",
+            hint:      "Find it at https://sliplane.io → Team Settings → API Tokens",
+            isSecret:  true);
 
-        // Sliplane token: explicit flag → env var
-        var sliplaneToken = settings.SliplaneToken
-            ?? Environment.GetEnvironmentVariable("SLIPLANE_API_KEY")
-            ?? throw new InvalidOperationException(
-                "Sliplane token required. Use --sliplane-token or set SLIPLANE_API_KEY.");
+        var tendrilClient = settings.CreateTendrilClient();
+
+        // ── 1. Select server ───────────────────────────────────────────────
+        var serversDoc = await tendrilClient.GetAsync("api/v1/servers", sliplaneToken);
+        var servers = serversDoc.RootElement.EnumerateArray()
+            .Select(s => (Id: s.GetProperty("id").GetString()!, Name: s.GetProperty("name").GetString()!))
+            .ToList();
+
+        var serverName = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Server:")
+                .HighlightStyle("green")
+                .PageSize(10)
+                .AddChoices(servers.Select(s => s.Name)));
+        var serverId = servers.First(s => s.Name == serverName).Id;
+        AnsiConsole.MarkupLine($"Server: [green]{serverName}[/]");
+
+        // ── 2. Select project ──────────────────────────────────────────────
+        var projectsDoc = await tendrilClient.GetAsync("api/v1/projects", sliplaneToken);
+        var projects = projectsDoc.RootElement.EnumerateArray()
+            .Select(p => (Id: p.GetProperty("id").GetString()!, Name: p.GetProperty("name").GetString()!))
+            .ToList();
+
+        var projectName = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("Project:")
+                .HighlightStyle("green")
+                .PageSize(10)
+                .AddChoices(projects.Select(p => p.Name)));
+        var projectId = projects.First(p => p.Name == projectName).Id;
+        AnsiConsole.MarkupLine($"Project: [green]{projectName}[/]");
+
+        // ── 3. Service name ────────────────────────────────────────────────
+        var serviceName = AnsiConsole.Prompt(
+            new TextPrompt<string>("Service name:")
+                .PromptStyle("green")
+                .DefaultValue("ivy-tendril")
+                .DefaultValueStyle(new Spectre.Console.Style(Spectre.Console.Color.Green)));
+
+        // ── 4. Login credentials ───────────────────────────────────────────
+        var username = AnsiConsole.Prompt(
+            new TextPrompt<string>("Username:")
+                .PromptStyle("green")
+                .Validate(v => string.IsNullOrWhiteSpace(v)
+                    ? ValidationResult.Error("[red]Cannot be empty.[/]")
+                    : ValidationResult.Success()));
+
+        var password = AnsiConsole.Prompt(
+            new TextPrompt<string>("Password [dim](min 8 chars)[/]:")
+                .PromptStyle("green")
+                .Secret()
+                .Validate(v => v.Length < 8
+                    ? ValidationResult.Error("[red]Minimum 8 characters.[/]")
+                    : ValidationResult.Success()));
+
+        // ── 5. API keys ────────────────────────────────────────────────────
+        var anthropicKey = PromptOptionalSecret("Anthropic API key [dim](optional)[/]:");
+        var claudeToken  = PromptOptionalSecret("Claude OAuth token [dim](optional)[/]:");
+        var githubToken  = PromptOptionalSecret("GitHub token [dim](optional)[/]:");
+        var openAiKey    = PromptOptionalSecret("OpenAI API key [dim](optional)[/]:");
+        var geminiKey    = PromptOptionalSecret("Gemini API key [dim](optional)[/]:");
+
+        // ── 6. Repos ───────────────────────────────────────────────────────
+        var repos = new List<string>();
+        if (Confirm("Clone GitHub repos into container?"))
+        {
+            while (true)
+            {
+                var repo = AnsiConsole.Prompt(
+                    new TextPrompt<string>("  Repo URL [dim](empty to finish)[/]:")
+                        .PromptStyle("green")
+                        .AllowEmpty());
+                if (string.IsNullOrWhiteSpace(repo)) break;
+                repos.Add(repo);
+            }
+        }
+
+        // ── 7. Volume ──────────────────────────────────────────────────────
+        string? volumeId = null;
+        if (Confirm("Attach a persistent volume?"))
+        {
+            volumeId = AnsiConsole.Prompt(
+                new TextPrompt<string>("Volume ID:")
+                    .PromptStyle("green"));
+        }
+
+        // ── 8. Confirm and deploy ──────────────────────────────────────────
+        if (!Confirm("Deploy?"))
+        {
+            AnsiConsole.MarkupLine("[dim]Cancelled.[/]");
+            return 0;
+        }
 
         var body = new Dictionary<string, object?>
         {
             ["sliplaneApiToken"]  = sliplaneToken,
-            ["projectId"]         = settings.ProjectId,
-            ["serverId"]          = settings.ServerId,
-            ["serviceName"]       = settings.ServiceName,
-            ["basicAuthUsername"] = settings.BasicAuthUsername,
-            ["basicAuthPassword"] = settings.BasicAuthPassword,
+            ["projectId"]         = projectId,
+            ["serverId"]          = serverId,
+            ["serviceName"]       = serviceName,
+            ["basicAuthUsername"] = username,
+            ["basicAuthPassword"] = password,
         };
 
-        if (!string.IsNullOrEmpty(settings.AnthropicApiKey))      body["anthropicApiKey"]      = settings.AnthropicApiKey;
-        if (!string.IsNullOrEmpty(settings.ClaudeCodeOAuthToken))  body["claudeCodeOAuthToken"] = settings.ClaudeCodeOAuthToken;
-        if (!string.IsNullOrEmpty(settings.GitHubToken))           body["gitHubToken"]          = settings.GitHubToken;
-        if (!string.IsNullOrEmpty(settings.OpenAiApiKey))          body["openAiApiKey"]         = settings.OpenAiApiKey;
-        if (!string.IsNullOrEmpty(settings.GeminiApiKey))          body["geminiApiKey"]         = settings.GeminiApiKey;
-        if (settings.Repos is { Length: > 0 })                     body["repos"]                = settings.Repos;
-        if (!string.IsNullOrEmpty(settings.VolumeId))              body["volumeId"]             = settings.VolumeId;
-        if (!string.IsNullOrEmpty(settings.GitRepo))               body["gitRepo"]              = settings.GitRepo;
-        if (!string.IsNullOrEmpty(settings.Branch))                body["branch"]               = settings.Branch;
+        if (anthropicKey is not null) body["anthropicApiKey"]     = anthropicKey;
+        if (claudeToken  is not null) body["claudeCodeOAuthToken"] = claudeToken;
+        if (githubToken  is not null) body["gitHubToken"]          = githubToken;
+        if (openAiKey    is not null) body["openAiApiKey"]         = openAiKey;
+        if (geminiKey    is not null) body["geminiApiKey"]         = geminiKey;
+        if (repos.Count > 0)          body["repos"]                = repos.ToArray();
+        if (volumeId     is not null) body["volumeId"]             = volumeId;
 
-        AnsiConsole.MarkupLine("[yellow]Deploying Tendril...[/]");
-        var result = await client.PostAsync("api/v1/tendrils", body);
+        AnsiConsole.MarkupLine("Deploying...");
+        var result = await tendrilClient.PostAsync("api/v1/tendrils", body);
         YamlOutput.Write(result);
-        AnsiConsole.MarkupLine("[green]Tendril deployment accepted. Use 'ivy tendrils status' to check progress.[/]");
+        AnsiConsole.MarkupLine("[green]Done![/] Use 'ivy tendrils status' to check progress.");
         return 0;
+    }
+
+    private static string? PromptOptionalSecret(string label)
+    {
+        var value = AnsiConsole.Prompt(
+            new TextPrompt<string>(label)
+                .PromptStyle("green")
+                .Secret()
+                .AllowEmpty());
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static bool Confirm(string label, bool defaultValue = false)
+    {
+        var def = defaultValue ? "y" : "n";
+        var answer = AnsiConsole.Prompt(
+            new TextPrompt<string>($"{label} [green][[y/n]] ({def})[/]")
+                .PromptStyle("green")
+                .AllowEmpty()
+                .Validate(v =>
+                {
+                    if (string.IsNullOrEmpty(v)) return ValidationResult.Success();
+                    return v.ToLower() is "y" or "n" or "yes" or "no"
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Please enter y or n.[/]");
+                }));
+
+        return string.IsNullOrEmpty(answer) ? defaultValue : answer.ToLower() is "y" or "yes";
     }
 }
