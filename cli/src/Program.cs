@@ -28,7 +28,7 @@ var app = new CommandApp();
 
 app.Configure(config =>
 {
-    config.SetApplicationName("ivy");
+    config.SetApplicationName("ivy-examples");
     config.SetApplicationVersion("0.1.0");
 
     // ── Config (CLI-wide) ─────────────────────────────────────────────

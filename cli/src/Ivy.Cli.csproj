@@ -7,7 +7,7 @@
 
     <!-- dotnet tool settings -->
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>ivy</ToolCommandName>
+    <ToolCommandName>ivy-examples</ToolCommandName>
 
     <!-- NuGet package metadata -->
     <PackageId>Ivy.Cli</PackageId>
