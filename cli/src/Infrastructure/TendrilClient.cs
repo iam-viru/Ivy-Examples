@@ -29,9 +29,12 @@ public sealed class TendrilClient
             _http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
     }
 
-    public async Task<JsonDocument> GetAsync(string path)
+    public async Task<JsonDocument> GetAsync(string path, string? sliplaneToken = null)
     {
-        var response = await _http.GetAsync(path);
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (!string.IsNullOrEmpty(sliplaneToken))
+            request.Headers.Add("X-Sliplane-Token", sliplaneToken);
+        var response = await _http.SendAsync(request);
         await EnsureSuccess(response);
         var stream = await response.Content.ReadAsStreamAsync();
         return await JsonDocument.ParseAsync(stream);

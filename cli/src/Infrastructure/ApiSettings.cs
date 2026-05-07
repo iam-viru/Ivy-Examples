@@ -56,7 +56,7 @@ public class TendrilApiSettings : CommandSettings
             envVar:    Environment.GetEnvironmentVariable("TENDRIL_BASE_URL"),
             configKey: "tendril_base_url",
             label:     "Tendril base URL",
-            hint:      "e.g. [yellow]https://ivy-tendril-deploy.sliplane.app[/]",
+            hint:      "e.g. [yellow]https://ivy-tendril-deployment.sliplane.app[/]",
             isSecret:  false);
 
         // API key is optional for Tendril — don't prompt, just check flag/env/config
