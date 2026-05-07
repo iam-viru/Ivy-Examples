@@ -356,6 +356,7 @@
         "Isopoh.Cryptography.Argon2",
         "Ivy.Analyser",
         "Ivy.Auth.Sliplane",
+        "Scalar.AspNetCore",
         "demo"
       ]
     }
