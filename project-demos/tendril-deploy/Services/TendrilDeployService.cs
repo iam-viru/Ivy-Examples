@@ -1,5 +1,6 @@
 namespace TendrilDeploy.Services;
 
+using System.Text.RegularExpressions;
 using TendrilDeploy.Api;
 using TendrilDeploy.Models;
 using TendrilDeploy.Apps;
@@ -105,9 +106,18 @@ public class TendrilDeployService
             : null;
 
         // ── 6. Volume mounts ──────────────────────────────────────────────
+        // If no volume ID was provided, auto-create one on the selected server.
+        var volumeId = req.VolumeId?.Trim();
+        if (string.IsNullOrWhiteSpace(volumeId))
+        {
+            var volumeName = AutoDataVolumeName(req.ServiceName);
+            var created = await _client.CreateVolumeAsync(req.SliplaneApiToken, req.ServerId, volumeName);
+            volumeId = created.Id;
+        }
+
         List<(string VolumeId, string MountPath)>? volumes = null;
-        if (!string.IsNullOrWhiteSpace(req.VolumeId))
-            volumes = [(req.VolumeId.Trim(), home)];
+        if (!string.IsNullOrWhiteSpace(volumeId))
+            volumes = [(volumeId, home)];
 
         // ── 7. Create the Sliplane service ────────────────────────────────
         var service = await _client.CreateServiceAsync(
@@ -181,5 +191,22 @@ public class TendrilDeployService
         var v = (value ?? "").Trim();
         if (v.Length > 0)
             list.Add(new EnvironmentVariable(key, v, Secret: true));
+    }
+
+    /// <summary>
+    /// Sliplane volume names should be URL-safe-ish; keep alphanumerics, dot, underscore, hyphen.
+    /// </summary>
+    public static string AutoDataVolumeName(string serviceName)
+    {
+        var raw = (serviceName ?? "").Trim().ToLowerInvariant();
+        if (raw.Length == 0)
+            return "tendril-data";
+
+        var slug = Regex.Replace(raw, @"[^a-z0-9._-]+", "-", RegexOptions.CultureInvariant);
+        slug = Regex.Replace(slug, "-{2,}", "-", RegexOptions.CultureInvariant).Trim('-');
+        if (slug.Length == 0)
+            slug = "tendril";
+
+        return $"{slug}-data";
     }
 }
