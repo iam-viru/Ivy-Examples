@@ -92,7 +92,7 @@ public sealed class DeployRequest
 
     /// <summary>
     /// Sliplane persistent volume ID to attach at <c>TendrilHome</c>.
-    /// Without a volume, data is lost on redeploy.
+    /// If omitted, a new volume is created on <see cref="ServerId"/> (name derived from <see cref="ServiceName"/>).
     /// </summary>
     public string? VolumeId { get; set; }
 

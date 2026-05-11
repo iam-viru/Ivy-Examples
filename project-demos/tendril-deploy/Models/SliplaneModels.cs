@@ -47,6 +47,8 @@ public record SliplaneServiceDomain(string Id, string Domain, bool IsCustom);
 
 public record SliplaneServiceVolumeInfo(string Id, string Name, string MountPath);
 
+public record SliplaneVolume(string Id, string Name);
+
 public record SliplaneServiceResources(double CpuLimit, int MemoryLimit);
 
 public record SliplaneServiceNetwork(

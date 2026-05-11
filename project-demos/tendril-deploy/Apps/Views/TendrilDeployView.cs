@@ -125,10 +125,6 @@ public class TendrilDeployView : ViewBase
         /// so we freeze the validated step-0 model and deploy from this snapshot.
         /// </summary>
         var validatedDeployForm = UseState<TendrilDeployFormModel?>(() => null);
-        var repoCloneRows = UseState(() => new List<TendrilBootstrapRepoEntry>
-        {
-            new(Guid.NewGuid(), "")
-        });
         var deployedService = UseState<(string ProjectId, SliplaneService Service)?>(() => null);
         var deployError = UseState<string?>(() => null);
         var validationFailed = UseState(false);
@@ -202,19 +198,7 @@ public class TendrilDeployView : ViewBase
                 return;
             }
 
-            List<EnvironmentVariable> cloneEnvVars;
-            try
-            {
-                cloneEnvVars = TendrilCloneBootstrap.BuildCloneEnvVars(
-                    repoCloneRows.Value
-                        .Select(e => new TendrilCloneBootstrap.Row(e.CloneUrl))
-                        .ToList());
-            }
-            catch (ArgumentException ex)
-            {
-                deployError.Set(ex.Message);
-                return;
-            }
+            var cloneEnvVars = new List<EnvironmentVariable>();
 
             var anthropic = (anthropicKey.Value ?? "").Trim();
             var claudeOAuth = (claudeOAuthToken.Value ?? "").Trim();
@@ -234,7 +218,7 @@ public class TendrilDeployView : ViewBase
                 deployError.Set(ex.Message);
                 basicAuthStepError.Set(ex.Message);
                 basicAuthValidationFailed.Set(true);
-                stepIndex.Set(3);
+                stepIndex.Set(2);
                 return;
             }
 
@@ -283,9 +267,17 @@ public class TendrilDeployView : ViewBase
                     ? TendrilCloneBootstrap.BuildServiceCmdWrapped()
                     : null;
 
+                var volumeId = m.VolumeId?.Trim();
+                if (string.IsNullOrWhiteSpace(volumeId))
+                {
+                    var volumeName = TendrilDeployService.AutoDataVolumeName(m.Name);
+                    var created = await client.CreateVolumeAsync(_apiToken, m.ServerId, volumeName);
+                    volumeId = created.Id;
+                }
+
                 List<(string VolumeId, string MountPath)>? volumes = null;
-                if (!string.IsNullOrWhiteSpace(m.VolumeId))
-                    volumes = [(m.VolumeId.Trim(), home)];
+                if (!string.IsNullOrWhiteSpace(volumeId))
+                    volumes = [(volumeId, home)];
 
                 var service = await client.CreateServiceAsync(_apiToken, m.ProjectId,
                     ServiceRequestFactory.BuildCreateRequest(
@@ -410,8 +402,7 @@ public class TendrilDeployView : ViewBase
         {
             new StepperItem("1", stepIndex.Value > 0 ? Icons.Check : null, "Welcome", "Server & name"),
             new StepperItem("2", stepIndex.Value > 1 ? Icons.Check : null, "Secrets", "API keys"),
-            new StepperItem("3", stepIndex.Value > 2 ? Icons.Check : null, "Repositories", "Workspaces"),
-            new StepperItem("4", deployedService.Value != null ? Icons.Check : null, "Login", "Basic auth"),
+            new StepperItem("3", deployedService.Value != null ? Icons.Check : null, "Login", "Basic auth"),
         };
 
         ValueTask OnStepperSelect(Event<Stepper, int> e)
@@ -420,47 +411,12 @@ public class TendrilDeployView : ViewBase
             {
                 stepIndex.Set(e.Value);
                 if (e.Value == 0)
-                {
                     validatedDeployForm.Set(null);
-                    repoCloneRows.Set([new TendrilBootstrapRepoEntry(Guid.NewGuid(), "")]);
-                }
             }
 
             return ValueTask.CompletedTask;
         }
 
-        var reposHintCallout = new Callout(
-            Text.Markdown(
-                """
-                Each filled row is one repo cloned when the container starts. In Tendril project settings, **Your repository folder** must be the **path inside the container** (the folder that contains `.git`), not the clone URL.
-
-                **Example**
-
-                - `TENDRIL_HOME` is `/data/tendril`
-                - This row is `https://github.com/acme/hello-world`
-                - After startup the repo is at `/data/tendril/repos/acme/hello-world`
-                - So in **Your repository folder** enter: `/data/tendril/repos/acme/hello-world`
-                """.ReplaceLineEndings("\n")),
-            "Repositories",
-            CalloutVariant.Info);
-
-        object repoSections = Layout.Vertical().Gap(4).Width(Size.Full())
-            | Text.H4("Repositories")
-            | Text.Block("One URL per row. Leave empty to skip. Add adds another row.")
-            | (Layout.Vertical().Gap(2).Width(Size.Full())
-                | repoCloneRows.Value.Select(e => (object)new TendrilBootstrapRepoRowView(e.Id, repoCloneRows))
-                    .ToArray())
-            | new Button("Add").Icon(Icons.Plus).Outline()
-                .OnClick(_ =>
-                {
-                    repoCloneRows.Set(xs =>
-                    {
-                        var copy = xs.ToList();
-                        copy.Add(new TendrilBootstrapRepoEntry(Guid.NewGuid(), ""));
-                        return copy;
-                    });
-                    return ValueTask.CompletedTask;
-                });
         var welcomeNoteCallout = new Callout(
             Layout.Vertical().Gap(3)
                 | Text.Block(
@@ -487,8 +443,6 @@ public class TendrilDeployView : ViewBase
                 | Text.H1("Welcome to Ivy Tendril").Align(TextAlignment.Center),
             1 => Layout.Vertical().Gap(2).AlignContent(Align.Center)
                 | Text.H1("API keys").Align(TextAlignment.Center),
-            2 => Layout.Vertical().Gap(2).AlignContent(Align.Center)
-                | Text.H1("Repositories").Align(TextAlignment.Center),
             _ => Layout.Vertical().Gap(2).AlignContent(Align.Center)
                 | Text.H1("Protect your deployment").Align(TextAlignment.Center),
         };
@@ -502,9 +456,6 @@ public class TendrilDeployView : ViewBase
             1 => Layout.Vertical().Gap(4).Width(Size.Full())
                 | secretsHintCallout
                 | agentSections,
-            2 => Layout.Vertical().Gap(4).Width(Size.Full())
-                | reposHintCallout
-                | repoSections,
             _ => Layout.Vertical().Gap(4).Width(Size.Full())
                 | basicAuthSections,
         };
@@ -532,7 +483,6 @@ public class TendrilDeployView : ViewBase
                     {
                         stepIndex.Set(0);
                         validatedDeployForm.Set(null);
-                        repoCloneRows.Set([new TendrilBootstrapRepoEntry(Guid.NewGuid(), "")]);
                         return ValueTask.CompletedTask;
                     })
                 | new Spacer()
@@ -548,31 +498,6 @@ public class TendrilDeployView : ViewBase
                         stepIndex.Set(2);
                         return ValueTask.CompletedTask;
                     }),
-            2 => Layout.Horizontal().Width(Size.Full()).Gap(4)
-                | new Button("Back")
-                    .Icon(Icons.ChevronLeft)
-                    .Variant(ButtonVariant.Outline)
-                    .Large()
-                    .BorderRadius(BorderRadius.Full)
-                    .Width(Size.Fraction(0.31f))
-                    .OnClick(_ =>
-                    {
-                        stepIndex.Set(1);
-                        return ValueTask.CompletedTask;
-                    })
-                | new Spacer()
-                | new Button("Continue")
-                    .Icon(Icons.ChevronRight, Align.Right)
-                    .Primary()
-                    .Large()
-                    .BorderRadius(BorderRadius.Full)
-                    .Width(Size.Fraction(0.31f))
-                    .OnClick(async _ =>
-                    {
-                        basicAuthValidationFailed.Set(false);
-                        stepIndex.Set(3);
-                        await Task.CompletedTask;
-                    }),
             _ => Layout.Horizontal().Width(Size.Full()).Gap(4)
                 | new Button("Back")
                     .Icon(Icons.ChevronLeft)
@@ -582,7 +507,7 @@ public class TendrilDeployView : ViewBase
                     .Width(Size.Fraction(0.31f))
                     .OnClick(_ =>
                     {
-                        stepIndex.Set(2);
+                        stepIndex.Set(1);
                         return ValueTask.CompletedTask;
                     })
                 | new Spacer()

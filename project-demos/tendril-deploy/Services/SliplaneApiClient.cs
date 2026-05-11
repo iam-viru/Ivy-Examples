@@ -71,6 +71,51 @@ public class SliplaneApiClient
         return await ParseObjectAsync<SliplaneService>(response);
     }
 
+    /// <summary>POST /servers/{serverId}/volumes — 201 returns <c>id</c> and <c>name</c>.</summary>
+    public async Task<SliplaneVolume> CreateVolumeAsync(string apiToken, string serverId, string name)
+    {
+        var body = new { name };
+        var response = await SendAsync(HttpMethod.Post, $"/servers/{serverId}/volumes", apiToken, body);
+
+        if (response == null)
+        {
+            throw new InvalidOperationException(
+                "Sliplane API did not respond when creating the volume. Check your network connection and API token.");
+        }
+
+        var responseBody = string.Empty;
+        try
+        {
+            responseBody = await response.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            // leave empty
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = $"Sliplane API returned {(int)response.StatusCode} {response.StatusCode} when creating the volume.";
+            if (!string.IsNullOrWhiteSpace(responseBody))
+                message += $" Details: {responseBody}";
+
+            throw new InvalidOperationException(message);
+        }
+
+        var volume = string.IsNullOrWhiteSpace(responseBody)
+            ? null
+            : JsonSerializer.Deserialize<SliplaneVolume>(responseBody,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (string.IsNullOrWhiteSpace(volume?.Id))
+        {
+            throw new InvalidOperationException(
+                "Sliplane returned an empty or invalid volume payload after volume creation.");
+        }
+
+        return volume;
+    }
+
     public async Task<List<SliplaneServiceEvent>> GetServiceEventsAsync(string apiToken, string projectId, string serviceId)
     {
         var response = await SendAsync(HttpMethod.Get, $"/projects/{projectId}/services/{serviceId}/events", apiToken);
