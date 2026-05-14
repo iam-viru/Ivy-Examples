@@ -5,7 +5,7 @@ Unified command-line tool for Ivy Interactive infrastructure. Manage Sliplane se
 ## Installation
 
 ```bash
-# From source (in cli/src/)
+# From source (in ivy-examples-cli/src/)
 dotnet tool install -g --add-source ./nupkg Ivy.Cli   # global command: ivy-examples
 
 # Or run directly without installing
@@ -118,7 +118,7 @@ Inside a sub-branch, omit the parent name (the path already shows it): write `Li
 ## Building
 
 ```bash
-cd cli/src
+cd ivy-examples-cli/src
 dotnet build
 dotnet run -- --help
 ```
@@ -126,7 +126,7 @@ dotnet run -- --help
 ## Packaging as dotnet tool
 
 ```bash
-cd cli/src
+cd ivy-examples-cli/src
 dotnet pack -c Release -o ../nupkg
 dotnet tool install -g --add-source ../nupkg Ivy.Cli   # global command: ivy-examples
 ivy-examples --help
