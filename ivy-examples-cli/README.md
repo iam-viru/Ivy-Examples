@@ -73,7 +73,7 @@ Combine **Path** + **Actions** (e.g. `ivy-examples sliplane projects list`). See
 ```bash
 cd ivy-examples-cli/src
 dotnet pack -c Release -o ../nupkg
-dotnet tool install -g --add-source ../nupkg Ivy.Cli
+dotnet tool install -g --add-source ../nupkg Ivy.Examples.Cli
 ivy-examples --help
 ```
 
@@ -91,6 +91,6 @@ If you installed with **From this repo** above, rebuild the package and refresh 
 ```bash
 cd ivy-examples-cli/src
 dotnet pack -c Release -o ../nupkg
-dotnet tool update -g --add-source ../nupkg Ivy.Cli
+dotnet tool update -g --add-source ../nupkg Ivy.Examples.Cli
 ```
 
