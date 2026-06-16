@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- dotnet tool settings -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ivy-examples</ToolCommandName>
+
+    <!-- NuGet package metadata -->
+    <PackageId>Ivy.Examples.Cli</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Ivy-Interactive</Authors>
+    <Description>Unified CLI for Ivy Interactive infrastructure — Sliplane, Tendrils, and more.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Ivy-Interactive/Ivy-Examples</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\..\README.md')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,60 @@
+namespace AutodealerCrm.Apps.Views;
+
+public class UserEditSheet(IState<bool> isOpen, RefreshToken refreshToken, int userId) : ViewBase
+{
+    public override object? Build()
+    {
+        var factory = UseService<AutodealerCrmContextFactory>();
+        var user = UseState(() => factory.CreateDbContext().Users.FirstOrDefault(e => e.Id == userId)!);
+
+        UseEffect(() =>
+        {
+            using var db = factory.CreateDbContext();
+            user.Value.UpdatedAt = DateTime.UtcNow;
+            db.Users.Update(user.Value);
+            db.SaveChanges();
+            refreshToken.Refresh();
+        }, [user]);
+
+        return user
+            .ToForm()
+            .Builder(e => e.Name, e => e.ToTextInput())
+            .Builder(e => e.Email, e => e.ToEmailInput())
+            .Builder(e => e.UserRoleId, e => e.ToAsyncSelectInput<int?>(QueryUserRoles, LookupUserRole, placeholder: "Select Role"))
+            .Remove(e => e.Id, e => e.CreatedAt, e => e.UpdatedAt)
+            .ToSheet(isOpen, "Edit User");
+    }
+
+    private static QueryResult<Option<int?>[]> QueryUserRoles(IViewContext context, string query)
+    {
+        var factory = context.UseService<AutodealerCrmContextFactory>();
+        return context.UseQuery<Option<int?>[], (string, string)>(
+            key: (nameof(QueryUserRoles), query),
+            fetcher: async ct =>
+            {
+                await using var db = factory.CreateDbContext();
+                return (await db.UserRoles
+                        .Where(e => e.DescriptionText.Contains(query))
+                        .Select(e => new { e.Id, e.DescriptionText })
+                        .Take(50)
+                        .ToArrayAsync(ct))
+                    .Select(e => new Option<int?>(e.DescriptionText, e.Id))
+                    .ToArray();
+            });
+    }
+
+    private static QueryResult<Option<int?>?> LookupUserRole(IViewContext context, int? id)
+    {
+        var factory = context.UseService<AutodealerCrmContextFactory>();
+        return context.UseQuery<Option<int?>?, (string, int?)>(
+            key: (nameof(LookupUserRole), id),
+            fetcher: async ct =>
+            {
+                if (id == null) return null;
+                await using var db = factory.CreateDbContext();
+                var role = await db.UserRoles.FirstOrDefaultAsync(e => e.Id == id, ct);
+                if (role == null) return null;
+                return new Option<int?>(role.DescriptionText, role.Id);
+            });
+    }
+}

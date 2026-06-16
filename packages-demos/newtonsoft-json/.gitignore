@@ -1,0 +1,8 @@
+bin/
+obj/
+*.sln.iml
+.idea/**/*
+**/.idea/*
+
+**/.vs/
+**.vs/

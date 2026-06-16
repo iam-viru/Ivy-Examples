@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>CS8618;CS8603;CS8602;CS8604;CS9113</NoWarn>
+    <RootNamespace>OllamaSharpDemo</RootNamespace>
+    <UserSecretsId>9061551a-b486-4263-ac58-fffe88c7cef1</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/**/*" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Ivy" Version="1.2.56" />
+    <PackageReference Include="Ivy.Analyser" Version="1.2.56">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="OllamaSharp" Version="5.4.12" />
+  </ItemGroup>
+
+</Project>
+
